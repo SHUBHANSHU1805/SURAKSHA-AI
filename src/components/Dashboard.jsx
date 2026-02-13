@@ -10,7 +10,7 @@ const Dashboard = ({ firList, patrolRoutes, darkMode, t }) => {
 
   return (
     <div className="space-y-6">
-      <h1 className={`text-3xl font-bold ${textPrimary}`}>{t.welcome}</h1>
+      <h1 className={`text-3xl font-bold ${textPrimary}`}>Welcome to Suraksha AI</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-6 text-white shadow-lg">
@@ -26,7 +26,7 @@ const Dashboard = ({ firList, patrolRoutes, darkMode, t }) => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-red-100 text-sm">{t.highRisk}</p>
-              <p className="text-3xl font-bold mt-2">3</p>
+              <p className="text-3xl font-bold mt-2">10</p>
             </div>
             <AlertTriangle className="w-12 h-12 opacity-80" />
           </div>

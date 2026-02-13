@@ -72,7 +72,7 @@ function App() {
         <div className="p-6">
           <div className="flex items-center gap-2 mb-8">
             <Shield className="w-8 h-8" />
-            <h1 className="text-2xl font-bold">Trinetra AI</h1>
+            <h1 className="text-2xl font-bold">Suraksha AI</h1>
           </div>
           <nav className="space-y-2">
             {[
