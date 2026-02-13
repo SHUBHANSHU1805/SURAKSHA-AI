@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/SURAKSHA-AI/static/css/main.f7edc69e.css",
+    "main.js": "/SURAKSHA-AI/static/js/main.3f2e582a.js",
+    "index.html": "/SURAKSHA-AI/index.html",
+    "main.f7edc69e.css.map": "/SURAKSHA-AI/static/css/main.f7edc69e.css.map",
+    "main.3f2e582a.js.map": "/SURAKSHA-AI/static/js/main.3f2e582a.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.f7edc69e.css",
+    "static/js/main.3f2e582a.js"
+  ]
+}
