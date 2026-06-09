@@ -1,87 +1,191 @@
-import React from 'react';
-import { MapPin, FileText, AlertTriangle, Navigation, TrendingUp } from 'lucide-react';
-import MapPlaceholder from './MapPlaceholder';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useSelector } from 'react-redux';
+import { useFIR } from '../hooks/useFIR';
+import { 
+  AlertTriangle, 
+  TrendingUp, 
+  Users, 
+  MapPin,
+  ArrowRight 
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
 
-const Dashboard = ({ firList, patrolRoutes, darkMode, t }) => {
-  const textPrimary = darkMode ? 'text-gray-100' : 'text-gray-800';
-  const textSecondary = darkMode ? 'text-gray-300' : 'text-gray-700';
-  const textTertiary = darkMode ? 'text-gray-400' : 'text-gray-600';
-  const bgCard = darkMode ? 'bg-gray-800' : 'bg-white';
+const Dashboard = () => {
+  const { t } = useTranslation();
+  const { profile } = useSelector((state) => state.auth);
+  const { firs, loadFIRs, statistics } = useFIR();
+  const [stats, setStats] = useState({
+    total: 0,
+    highSeverity: 0,
+    underInvestigation: 0,
+    thisMonth: 0
+  });
+
+  useEffect(() => {
+    loadFIRs({ limit: 100 });
+  }, []);
+
+  useEffect(() => {
+    if (firs.length > 0) {
+      const today = new Date();
+      const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+      const newStats = {
+        total: firs.length,
+        highSeverity: firs.filter(f => ['High', 'Critical'].includes(f.severity)).length,
+        underInvestigation: firs.filter(f => f.status === 'Under Investigation').length,
+        thisMonth: firs.filter(f => new Date(f.createdAt) >= thisMonth).length
+      };
+      setStats(newStats);
+    }
+  }, [firs]);
+
+  const recentFIRs = firs.slice(0, 5);
+
+  const StatCard = ({ icon: Icon, title, value, color }) => (
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow p-6 border-l-4 ${color}`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-gray-600 dark:text-gray-400 text-sm font-medium">{title}</p>
+          <p className="text-3xl font-bold text-gray-900 dark:text-white mt-2">{value}</p>
+        </div>
+        <Icon className={`w-12 h-12 ${color.replace('border', 'text')}`} />
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
-      <h1 className={`text-3xl font-bold ${textPrimary}`}>Welcome to Suraksha AI</h1>
-      
+      {/* Welcome Section */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg shadow-lg p-8 text-white">
+        <h1 className="text-3xl font-bold mb-2">
+          {t('dashboard.welcome')} 👋
+        </h1>
+        <p className="text-blue-100">
+          {t('dashboard.overview')} • {profile?.department}
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard
+          icon={AlertTriangle}
+          title={t('fir.allFIRs')}
+          value={stats.total}
+          color="border-blue-500 text-blue-600"
+        />
+        <StatCard
+          icon={TrendingUp}
+          title="High Severity"
+          value={stats.highSeverity}
+          color="border-red-500 text-red-600"
+        />
+        <StatCard
+          icon={Users}
+          title="Under Investigation"
+          value={stats.underInvestigation}
+          color="border-yellow-500 text-yellow-600"
+        />
+        <StatCard
+          icon={MapPin}
+          title="This Month"
+          value={stats.thisMonth}
+          color="border-green-500 text-green-600"
+        />
+      </div>
+
+      {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg p-6 text-white shadow-lg">
+        <Link
+          to="/fir-management"
+          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg hover:scale-105 transition-all duration-200"
+        >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-sm">{t.totalFIRs}</p>
-              <p className="text-3xl font-bold mt-2">{firList.length}</p>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                {t('dashboard.newReport')}
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Submit a new FIR
+              </p>
             </div>
-            <FileText className="w-12 h-12 opacity-80" />
+            <ArrowRight className="w-6 h-6 text-blue-600" />
           </div>
-        </div>
-        <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-lg p-6 text-white shadow-lg">
+        </Link>
+
+        <Link
+          to="/analytics"
+          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg hover:scale-105 transition-all duration-200"
+        >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-red-100 text-sm">{t.highRisk}</p>
-              <p className="text-3xl font-bold mt-2">10</p>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                {t('dashboard.viewAnalytics')}
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                View crime statistics
+              </p>
             </div>
-            <AlertTriangle className="w-12 h-12 opacity-80" />
+            <ArrowRight className="w-6 h-6 text-green-600" />
           </div>
-        </div>
-        <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-6 text-white shadow-lg">
+        </Link>
+
+        <Link
+          to="/map"
+          className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 hover:shadow-lg hover:scale-105 transition-all duration-200"
+        >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-green-100 text-sm">{t.activePatrols}</p>
-              <p className="text-3xl font-bold mt-2">{patrolRoutes.filter(r => r.status === 'Active').length}</p>
+              <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                {t('dashboard.viewMap')}
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                View crime heatmap
+              </p>
             </div>
-            <Navigation className="w-12 h-12 opacity-80" />
+            <ArrowRight className="w-6 h-6 text-purple-600" />
           </div>
-        </div>
+        </Link>
       </div>
 
-      <div className={`rounded-lg shadow-md p-6 ${bgCard}`}>
-        <h2 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
-          <MapPin className="w-5 h-5 text-blue-600" />{t.heatmap}
+      {/* Recent FIRs */}
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          {t('fir.recentFIRs')}
         </h2>
-        <MapPlaceholder firData={firList} darkMode={darkMode} />
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className={`rounded-lg shadow-md p-6 ${bgCard}`}>
-          <h2 className={`text-xl font-semibold mb-4 flex items-center gap-2 ${textPrimary}`}>
-            <TrendingUp className="w-5 h-5 text-purple-600" />{t.crimeTrends}
-          </h2>
-          <div className="space-y-3">
-            {['Robbery', 'Theft', 'Assault', 'Burglary'].map((type, i) => (
-              <div key={type} className="flex items-center gap-3">
-                <div className={`flex-1 rounded-full h-3 ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                  <div className="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full" style={{ width: `${70 - i * 15}%` }}></div>
+        <div className="space-y-3">
+          {recentFIRs.length === 0 ? (
+            <p className="text-gray-600 dark:text-gray-400 text-center py-8">
+              {t('fir.noFIRs')}
+            </p>
+          ) : (
+            recentFIRs.map((fir) => (
+              <div
+                key={fir.id}
+                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+              >
+                <div className="flex-1">
+                  <h4 className="font-semibold text-gray-900 dark:text-white">
+                    {fir.crimeType}
+                  </h4>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {fir.location?.city}, {fir.location?.state}
+                  </p>
                 </div>
-                <span className={`text-sm w-20 ${textSecondary}`}>{type}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className={`rounded-lg shadow-md p-6 ${bgCard}`}>
-          <h2 className={`text-xl font-semibold mb-4 ${textPrimary}`}>{t.recentFIRs}</h2>
-          <div className="space-y-2">
-            {firList.slice(0, 4).map((fir) => (
-              <div key={fir.id} className={`flex items-center justify-between p-3 rounded-lg ${darkMode ? 'bg-gray-700' : 'bg-gray-50'}`}>
-                <div>
-                  <p className={`font-semibold text-sm ${textPrimary}`}>{fir.type}</p>
-                  <p className={`text-xs ${textTertiary}`}>{fir.location}</p>
+                <div className="text-right">
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    fir.severity === 'Critical' ? 'bg-red-100 text-red-700' :
+                    fir.severity === 'High' ? 'bg-orange-100 text-orange-700' :
+                    'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {fir.severity}
+                  </span>
                 </div>
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                  fir.severity === 'High' ? 'bg-red-100 text-red-700' :
-                  fir.severity === 'Medium' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
-                }`}>{fir.severity}</span>
               </div>
-            ))}
-          </div>
+            ))
+          )}
         </div>
       </div>
     </div>
