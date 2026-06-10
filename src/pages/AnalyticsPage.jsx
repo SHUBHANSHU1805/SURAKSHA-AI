@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFIR } from '../hooks/useFIR';
-import Analytics from '../components/analytics/Analytics';
+import Analytics from '../components/Analytics/Analytics';
 
 const AnalyticsPage = () => {
   const { t } = useTranslation();

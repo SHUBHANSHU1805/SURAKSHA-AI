@@ -9,7 +9,7 @@ import Register from './components/auth/Register';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 // Layout Components
-import Navbar from './components/common/Navbar';
+import Navbar from './components/common/NavBar';
 import Sidebar from './components/common/Sidebar';
 
 // Pages
