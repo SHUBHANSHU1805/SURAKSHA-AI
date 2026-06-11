@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { checkAuth } from './redux/slices/authSlice';
 
 // Auth Pages
@@ -17,6 +17,7 @@ import Dashboard from './pages/Dashboard';
 import AnalyticsPage from './pages/AnalyticsPage';
 import FIRManagement from './pages/FIRManagement';
 import MapPage from './pages/MapPage';
+import PatrolPage from './pages/PatrolPage';
 import Settings from './pages/Settings';
 
 // i18n
@@ -24,7 +25,6 @@ import './i18n/i18n';
 
 function App() {
   const dispatch = useDispatch();
-  const { initialized } = useSelector((state) => state.auth);
 
   useEffect(() => {
     dispatch(checkAuth());
@@ -52,6 +52,7 @@ function App() {
                       <Route path="/analytics" element={<AnalyticsPage />} />
                       <Route path="/fir-management" element={<FIRManagement />} />
                       <Route path="/map" element={<MapPage />} />
+                      <Route path="/patrol" element={<PatrolPage />} />
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/" element={<Navigate to="/dashboard" replace />} />
                       <Route path="*" element={<Navigate to="/dashboard" replace />} />

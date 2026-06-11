@@ -6,6 +6,7 @@ import {
   BarChart3, 
   FileText, 
   Map, 
+  Compass,
   Settings,
   ChevronRight
 } from 'lucide-react';
@@ -18,6 +19,7 @@ const Sidebar = () => {
     { to: '/analytics', icon: BarChart3, label: t('nav.analytics') },
     { to: '/fir-management', icon: FileText, label: t('nav.firManagement') },
     { to: '/map', icon: Map, label: t('nav.map') },
+    { to: '/patrol', icon: Compass, label: t('map.patrolRoutes') },
     { to: '/settings', icon: Settings, label: t('nav.settings') }
   ];
 

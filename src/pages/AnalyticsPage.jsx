@@ -6,9 +6,16 @@ import Analytics from '../components/Analytics/Analytics';
 const AnalyticsPage = () => {
   const { t } = useTranslation();
   const { loadFIRs } = useFIR();
+  const [darkMode, setDarkMode] = React.useState(document.documentElement.classList.contains('dark'));
 
   useEffect(() => {
     loadFIRs();
+    
+    const observer = new MutationObserver(() => {
+      setDarkMode(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
   }, []);
 
   return (
@@ -23,7 +30,7 @@ const AnalyticsPage = () => {
       </div>
 
       {/* Render your existing Analytics component */}
-      <Analytics darkMode={false} t={t} />
+      <Analytics darkMode={darkMode} t={t} />
     </div>
   );
 };

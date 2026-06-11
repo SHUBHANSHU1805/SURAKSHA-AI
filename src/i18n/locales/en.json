@@ -116,6 +116,20 @@
     "center": "Center Map",
     "noData": "No crime data available for selected filters"
   },
+  "patrol": {
+    "title": "Patrol Management",
+    "activePatrols": "Active Patrols",
+    "plannedRoutes": "Planned Routes",
+    "completedToday": "Completed Today",
+    "totalRoutes": "Total Routes",
+    "planNewRoute": "Plan New Route",
+    "routeName": "Route Name",
+    "assignedOfficer": "Assigned Officer",
+    "startPoint": "Start Point",
+    "endPoint": "End Point",
+    "patrolTime": "Patrol Time",
+    "submit": "Submit"
+  },
   "analytics": {
     "title": "Crime Analytics",
     "stateWise": "State-wise Analytics",

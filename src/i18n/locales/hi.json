@@ -116,6 +116,20 @@
     "center": "नक्शे को केंद्र करें",
     "noData": "चयनित फ़िल्टर के लिए कोई अपराध डेटा उपलब्ध नहीं"
   },
+  "patrol": {
+    "title": "गश्त प्रबंधन",
+    "activePatrols": "सक्रिय गश्त",
+    "plannedRoutes": "नियोजित मार्ग",
+    "completedToday": "आज पूर्ण",
+    "totalRoutes": "कुल मार्ग",
+    "planNewRoute": "नया मार्ग योजना",
+    "routeName": "मार्ग का नाम",
+    "assignedOfficer": "नियुक्त अधिकारी",
+    "startPoint": "प्रारंभ बिंदु",
+    "endPoint": "अंत बिंदु",
+    "patrolTime": "गश्त समय",
+    "submit": "जमा करें"
+  },
   "analytics": {
     "title": "अपराध विश्लेषण",
     "stateWise": "राज्यवार विश्लेषण",
