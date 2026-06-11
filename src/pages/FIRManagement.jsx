@@ -8,20 +8,47 @@ import { Plus } from 'lucide-react';
 
 const FIRManagement = () => {
   const { t } = useTranslation();
-  const { loadFIRs, selectedFIR, clearSelection, submitSuccess, resetSubmitSuccess } = useFIR();
+  const { firs, loadFIRs, selectedFIR, clearSelection, submitSuccess, resetSubmitSuccess } = useFIR();
   const [showForm, setShowForm] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
 
+  // Check for dark mode
   useEffect(() => {
-    loadFIRs();
+    const isDark = document.documentElement.classList.contains('dark');
+    setDarkMode(isDark);
+    
+    const observer = new MutationObserver(() => {
+      const isDark = document.documentElement.classList.contains('dark');
+      setDarkMode(isDark);
+    });
+    
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
   }, []);
 
+  // Load FIRs on mount - use empty dependency array to run only once
+  useEffect(() => {
+    loadFIRs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Handle form submission success
   useEffect(() => {
     if (submitSuccess) {
       setShowForm(false);
       loadFIRs();
       resetSubmitSuccess();
     }
-  }, [submitSuccess]);
+  }, [submitSuccess, loadFIRs, resetSubmitSuccess]);
+
+  // Transform firs to match FIRTable expected format
+  const transformedFirs = firs.map(fir => ({
+    id: fir.id,
+    type: fir.crimeType || 'Unknown',
+    location: fir.location?.city || 'Unknown',
+    severity: fir.severity || 'Low',
+    date: fir.createdAt || new Date().toLocaleDateString()
+  }));
 
   return (
     <div className="space-y-6">
@@ -53,7 +80,7 @@ const FIRManagement = () => {
 
       {/* Table */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-        <FIRTable onSelectFIR={(fir) => {}} />
+        <FIRTable firList={transformedFirs} darkMode={darkMode} t={t} />
       </div>
 
       {/* Details Modal */}

@@ -7,7 +7,8 @@ import {
   removeFIR,
   setFilters,
   clearFilters,
-  clearSelectedFIR
+  clearSelectedFIR,
+  resetSubmitSuccess
 } from '../redux/slices/firSlice';
 
 export const useFIR = () => {
@@ -79,6 +80,10 @@ export const useFIR = () => {
     dispatch(clearSelectedFIR());
   };
 
+  const resetSuccessFlag = () => {
+    dispatch(resetSubmitSuccess());
+  };
+
   return {
     firs,
     selectedFIR,
@@ -93,6 +98,7 @@ export const useFIR = () => {
     deleteFIR,
     applyFilters,
     resetFilters,
-    clearSelection
+    clearSelection,
+    resetSubmitSuccess: resetSuccessFlag
   };
 };
