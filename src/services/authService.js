@@ -8,6 +8,37 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from './firebase';
 
+const PROFILE_STORAGE_KEY = 'trinetra_ai_user_profiles';
+
+const readLocalProfiles = () => {
+  try {
+    return JSON.parse(localStorage.getItem(PROFILE_STORAGE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const writeLocalProfiles = (profiles) => {
+  localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profiles));
+};
+
+const saveLocalProfile = (uid, profile) => {
+  const profiles = readLocalProfiles();
+  profiles[uid] = profile;
+  writeLocalProfiles(profiles);
+};
+
+const getLocalProfile = (uid) => readLocalProfiles()[uid] || null;
+
+const serializeUser = (user, profile = null) => ({
+  uid: user.uid,
+  email: user.email,
+  displayName: user.displayName || '',
+  photoURL: user.photoURL || '',
+  emailVerified: !!user.emailVerified,
+  profile
+});
+
 // Register new user
 export const registerUser = async (email, password, userData) => {
   try {
@@ -20,8 +51,7 @@ export const registerUser = async (email, password, userData) => {
       displayName: userData.name
     });
     
-    // Create user profile in Firestore
-    await setDoc(doc(db, 'users', user.uid), {
+    const profile = {
       uid: user.uid,
       email: email,
       name: userData.name,
@@ -30,9 +60,17 @@ export const registerUser = async (email, password, userData) => {
       badgeNumber: userData.badgeNumber || '',
       createdAt: new Date().toISOString(),
       isActive: true
-    });
-    
-    return user;
+    };
+
+    // Try to persist profile in Firestore, but keep the account usable if rules block writes.
+    try {
+      await setDoc(doc(db, 'users', user.uid), profile);
+    } catch (profileError) {
+      console.warn('Firestone profile write failed, using local fallback:', profileError);
+      saveLocalProfile(user.uid, profile);
+    }
+
+    return serializeUser(user, profile);
   } catch (error) {
     console.error('Registration error:', error);
     throw error;
@@ -54,7 +92,17 @@ export const loginUser = async (email, password) => {
         profile: userDoc.data() 
       };
     } else {
-      throw new Error('User profile not found');
+      const localProfile = getLocalProfile(user.uid);
+      if (localProfile) {
+        return serializeUser(user, localProfile);
+      }
+
+        return serializeUser(user, {
+          uid: user.uid,
+          email: user.email,
+          name: user.displayName || '',
+          role: 'officer'
+        });
     }
   } catch (error) {
     console.error('Login error:', error);
@@ -83,12 +131,9 @@ export const getCurrentUser = () => {
           try {
             const userDoc = await getDoc(doc(db, 'users', user.uid));
             if (userDoc.exists()) {
-              resolve({ 
-                ...user, 
-                profile: userDoc.data() 
-              });
+                resolve(serializeUser(user, userDoc.data()));
             } else {
-              resolve(user);
+                resolve(serializeUser(user));
             }
           } catch (error) {
             reject(error);

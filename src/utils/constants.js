@@ -41,8 +41,8 @@ export const DEFAULT_MAP_CENTER = {
 export const DEFAULT_MAP_ZOOM = 12;
 
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+export const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
 
 // Pagination
 export const DEFAULT_PAGE_SIZE = 20;

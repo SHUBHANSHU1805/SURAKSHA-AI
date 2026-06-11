@@ -46,11 +46,11 @@ const MapPage = () => {
     loadFIRs({ limit: 500 });
 
     // Initialize Mapbox with access token
-    initializeMapbox(import.meta.env.VITE_MAPBOX_ACCESS_TOKEN);
+    initializeMapbox(process.env.REACT_APP_MAPBOX_ACCESS_TOKEN);
 
     // Create map instance
     map.current = createMap(mapContainer.current, {
-      style: import.meta.env.VITE_MAPBOX_STYLE || 'mapbox://styles/mapbox/streets-v12',
+      style: process.env.REACT_APP_MAPBOX_STYLE || 'mapbox://styles/mapbox/streets-v12',
       center: [72.8777, 19.0760],
       zoom: 12
     });

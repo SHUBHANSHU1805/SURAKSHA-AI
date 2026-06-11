@@ -2,9 +2,9 @@ import mapboxgl from 'mapbox-gl';
 import MapboxGeocoder from '@mapbox/mapbox-gl-geocoder';
 import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 
-// Set Mapbox access token
+// Set Mapbox access token - correct way
 export const initializeMapbox = (accessToken) => {
-  mapboxgl.accessToken = accessToken;
+  mapboxgl.accessToken = accessToken || process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
 };
 
 /**
