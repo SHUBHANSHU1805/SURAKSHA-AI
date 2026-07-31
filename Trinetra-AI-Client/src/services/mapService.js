@@ -470,34 +470,304 @@ export const addDrawingTools = (map, MapboxDraw) => {
 };
 
 /**
- * Create patrol routes (polyline)
+ * @deprecated Use addPatrolRoutesInteractive for dataset-backed routes.
+ * Kept for backward compatibility with the AI-optimized single route display.
  */
 export const addPatrolRoute = (map, route, routeId = 'patrol-route') => {
   const coordinates = route.waypoints.map(wp => [wp.lng, wp.lat]);
+  if (map.getSource(routeId)) {
+    map.getSource(routeId).setData({
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates }
+    });
+    return;
+  }
+  map.addSource(routeId, {
+    type: 'geojson',
+    data: { type: 'Feature', geometry: { type: 'LineString', coordinates } }
+  });
+  map.addLayer({
+    id: routeId,
+    type: 'line',
+    source: routeId,
+    paint: { 'line-color': '#a78bfa', 'line-width': 5, 'line-opacity': 0.85 }
+  });
+};
 
-  if (!map.getSource(routeId)) {
-    map.addSource(routeId, {
-      type: 'geojson',
-      data: {
+// ─── Internal state for hover markers & popup ───────────────────────────────
+let _hoverPopup    = null;
+let _startMarker   = null;
+let _endMarker     = null;
+let _hoveredRouteId = null;
+
+function _clearHoverElements() {
+  if (_hoverPopup)  { _hoverPopup.remove();  _hoverPopup  = null; }
+  if (_startMarker) { _startMarker.remove(); _startMarker = null; }
+  if (_endMarker)   { _endMarker.remove();   _endMarker   = null; }
+}
+
+function _makeEndpointMarker(lngLat, color, letter) {
+  const el = document.createElement('div');
+  el.style.cssText = `
+    width:28px; height:28px; border-radius:50%;
+    background:${color}; border:3px solid #fff;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 2px 8px rgba(0,0,0,0.4);
+    font-size:12px; font-weight:800; color:#fff;
+    font-family:sans-serif; pointer-events:none;
+  `;
+  el.textContent = letter;
+  return new mapboxgl.Marker(el).setLngLat(lngLat);
+}
+
+const RISK_COLORS = {
+  CRITICAL: '#ef4444',
+  HIGH:     '#f97316',
+  MEDIUM:   '#eab308',
+  LOW:      '#22c55e',
+};
+const STATUS_COLORS = {
+  Active:    '#22c55e',
+  Scheduled: '#6366f1',
+  Completed: '#6b7280',
+  Cancelled: '#ef4444',
+};
+
+/**
+ * Render all patrol routes from the API as an interactive GeoJSON layer.
+ * Hover → route glows, popup with info, start(S) and end(E) markers appear.
+ *
+ * @param {mapboxgl.Map} map
+ * @param {Array}        routes  - Array of route objects from GET /api/patrol/routes
+ * @param {string}       sourceId - Mapbox source/layer namespace (default 'patrol-routes-ds')
+ */
+export const addPatrolRoutesInteractive = (map, routes, sourceId = 'patrol-routes-ds') => {
+  // Build GeoJSON FeatureCollection — one LineString per route
+  const geojson = {
+    type: 'FeatureCollection',
+    features: routes
+      .filter(r => r.waypoints && r.waypoints.length >= 2)
+      .map(r => ({
         type: 'Feature',
+        id: r.id, // needed for feature-state
         geometry: {
           type: 'LineString',
-          coordinates
+          coordinates: r.waypoints.map(wp => [wp.lng, wp.lat])
+        },
+        properties: {
+          route_id:           r.id,
+          name:               r.name,
+          state:              r.state,
+          zone:               r.zone,
+          patrol_type:        r.patrol_type,
+          route_source:       r.route_source,
+          risk_level:         r.risk_level,
+          hotspot_score:      r.hotspot_score,
+          crime_count:        r.crime_count,
+          patrol_date:        r.patrol_date,
+          patrol_shift:       r.patrol_shift,
+          vehicle_type:       r.vehicle_type,
+          assigned_officers:  r.assigned_officers,
+          distance_km:        r.distance_km,
+          estimated_duration: r.estimated_duration,
+          status:             r.status,
+          start_lat:          r.start.lat,
+          start_lng:          r.start.lng,
+          start_label:        r.start.label,
+          end_lat:            r.end.lat,
+          end_lng:            r.end.lng,
+          end_label:          r.end.label,
+          color: RISK_COLORS[r.risk_level] || '#6366f1'
         }
-      }
-    });
+      }))
+  };
 
-    map.addLayer({
-      id: routeId,
-      type: 'line',
-      source: routeId,
-      paint: {
-        'line-color': '#6366f1',
-        'line-width': 4,
-        'line-opacity': 0.7
-      }
-    });
+  const layerBase  = `${sourceId}-line`;
+  const layerGlow  = `${sourceId}-glow`;
+  const layerHit   = `${sourceId}-hit`;  // wide invisible hit area
+
+  // Update data if source already exists (re-render on filter change)
+  if (map.getSource(sourceId)) {
+    map.getSource(sourceId).setData(geojson);
+    return;
   }
+
+  // ── Add GeoJSON source ──────────────────────────────────────────────────
+  map.addSource(sourceId, {
+    type: 'geojson',
+    data: geojson,
+    generateId: false // we supply our own ids via feature.id
+  });
+
+  // ── Glow layer (blurred wide line, hidden by default) ───────────────────
+  map.addLayer({
+    id: layerGlow,
+    type: 'line',
+    source: sourceId,
+    paint: {
+      'line-color':   ['get', 'color'],
+      'line-width':   16,
+      'line-blur':    8,
+      'line-opacity': [
+        'case',
+        ['boolean', ['feature-state', 'hover'], false], 0.55,
+        0
+      ]
+    }
+  });
+
+  // ── Base route line ─────────────────────────────────────────────────────
+  map.addLayer({
+    id: layerBase,
+    type: 'line',
+    source: sourceId,
+    paint: {
+      'line-color': ['get', 'color'],
+      'line-width': [
+        'case',
+        ['boolean', ['feature-state', 'hover'], false], 6,
+        3
+      ],
+      'line-opacity': [
+        'case',
+        ['boolean', ['feature-state', 'hover'], false], 1,
+        0.65
+      ]
+    }
+  });
+
+  // ── Wide transparent hit area (easier hovering) ─────────────────────────
+  map.addLayer({
+    id: layerHit,
+    type: 'line',
+    source: sourceId,
+    paint: {
+      'line-color':   'transparent',
+      'line-width':   20,
+      'line-opacity': 0
+    }
+  });
+
+  // ── Hover handlers ──────────────────────────────────────────────────────
+  map.on('mousemove', layerHit, (e) => {
+    if (!e.features || e.features.length === 0) return;
+    map.getCanvas().style.cursor = 'pointer';
+
+    const feat = e.features[0];
+    const id   = feat.id ?? feat.properties.route_id;
+    const p    = feat.properties;
+
+    // Reset previous hover
+    if (_hoveredRouteId !== null && _hoveredRouteId !== id) {
+      map.setFeatureState({ source: sourceId, id: _hoveredRouteId }, { hover: false });
+      _clearHoverElements();
+    }
+
+    _hoveredRouteId = id;
+    map.setFeatureState({ source: sourceId, id }, { hover: true });
+
+    // ── Start marker (green S) ────────────────────────────────────────
+    if (!_startMarker) {
+      _startMarker = _makeEndpointMarker(
+        [parseFloat(p.start_lng), parseFloat(p.start_lat)],
+        '#16a34a', 'S'
+      ).addTo(map);
+    } else {
+      _startMarker.setLngLat([parseFloat(p.start_lng), parseFloat(p.start_lat)]);
+    }
+
+    // ── End marker (red E) ────────────────────────────────────────────
+    if (!_endMarker) {
+      _endMarker = _makeEndpointMarker(
+        [parseFloat(p.end_lng), parseFloat(p.end_lat)],
+        '#dc2626', 'E'
+      ).addTo(map);
+    } else {
+      _endMarker.setLngLat([parseFloat(p.end_lng), parseFloat(p.end_lat)]);
+    }
+
+    // ── Popup ─────────────────────────────────────────────────────────
+    const riskColor   = RISK_COLORS[p.risk_level]   || '#6366f1';
+    const statusColor = STATUS_COLORS[p.status]      || '#6b7280';
+    const midCoords   = feat.geometry.coordinates[
+      Math.floor(feat.geometry.coordinates.length / 2)
+    ];
+
+    const popupHTML = `
+      <div style="
+        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+        min-width:220px; padding:2px;
+      ">
+        <div style="
+          background:linear-gradient(135deg,#1e1b4b,#312e81);
+          color:#fff; padding:10px 12px; border-radius:6px 6px 0 0;
+          margin:-8px -8px 8px -8px;
+        ">
+          <div style="font-size:13px;font-weight:700;margin-bottom:2px">${p.name}</div>
+          <div style="font-size:10px;opacity:.75">${p.state} · ${p.zone}</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">
+          <div style="background:#f8fafc;border-radius:5px;padding:6px 8px">
+            <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px">Risk</div>
+            <div style="font-size:12px;font-weight:700;color:${riskColor}">${p.risk_level}</div>
+          </div>
+          <div style="background:#f8fafc;border-radius:5px;padding:6px 8px">
+            <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px">Status</div>
+            <div style="font-size:12px;font-weight:700;color:${statusColor}">${p.status}</div>
+          </div>
+          <div style="background:#f8fafc;border-radius:5px;padding:6px 8px">
+            <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px">Distance</div>
+            <div style="font-size:12px;font-weight:700;color:#1e293b">${p.distance_km} km</div>
+          </div>
+          <div style="background:#f8fafc;border-radius:5px;padding:6px 8px">
+            <div style="font-size:9px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px">Duration</div>
+            <div style="font-size:12px;font-weight:700;color:#1e293b">${p.estimated_duration} min</div>
+          </div>
+        </div>
+
+        <div style="border-top:1px solid #e2e8f0;padding-top:8px;font-size:11px;color:#475569">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <span style="width:10px;height:10px;border-radius:50%;background:#16a34a;flex-shrink:0"></span>
+            <strong>Start:</strong>&nbsp;${parseFloat(p.start_lat).toFixed(5)}, ${parseFloat(p.start_lng).toFixed(5)}
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+            <span style="width:10px;height:10px;border-radius:50%;background:#dc2626;flex-shrink:0"></span>
+            <strong>End:</strong>&nbsp;${parseFloat(p.end_lat).toFixed(5)}, ${parseFloat(p.end_lng).toFixed(5)}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">
+            <span style="background:#ede9fe;color:#5b21b6;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:600">${p.vehicle_type}</span>
+            <span style="background:#dbeafe;color:#1d4ed8;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:600">👮 ${p.assigned_officers} Officers</span>
+            <span style="background:#dcfce7;color:#166534;border-radius:4px;padding:2px 7px;font-size:10px;font-weight:600">${p.patrol_shift}</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (_hoverPopup) {
+      _hoverPopup.setLngLat(midCoords).setHTML(popupHTML);
+    } else {
+      _hoverPopup = new mapboxgl.Popup({
+        closeButton:    false,
+        closeOnClick:   false,
+        offset:         12,
+        maxWidth:       '280px',
+        className:      'patrol-route-popup'
+      })
+        .setLngLat(midCoords)
+        .setHTML(popupHTML)
+        .addTo(map);
+    }
+  });
+
+  map.on('mouseleave', layerHit, () => {
+    map.getCanvas().style.cursor = '';
+    if (_hoveredRouteId !== null) {
+      map.setFeatureState({ source: sourceId, id: _hoveredRouteId }, { hover: false });
+      _hoveredRouteId = null;
+    }
+    _clearHoverElements();
+  });
 };
 
 /**
