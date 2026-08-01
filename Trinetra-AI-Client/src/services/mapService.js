@@ -689,9 +689,11 @@ export const addPatrolRoutesInteractive = (map, routes, sourceId = 'patrol-route
     // ── Popup ─────────────────────────────────────────────────────────
     const riskColor   = RISK_COLORS[p.risk_level]   || '#6366f1';
     const statusColor = STATUS_COLORS[p.status]      || '#6b7280';
-    const midCoords   = feat.geometry.coordinates[
-      Math.floor(feat.geometry.coordinates.length / 2)
-    ];
+    // feat.geometry may be absent in Mapbox GL layer events; fall back to mouse pos
+    const coords = feat.geometry?.coordinates;
+    const midCoords = (coords && coords.length > 0)
+      ? coords[Math.floor(coords.length / 2)]
+      : [e.lngLat.lng, e.lngLat.lat];
 
     const popupHTML = `
       <div style="
